@@ -26,10 +26,10 @@ def generate_ground_truth(
         help="Limit number of samples to transcribe",
     ),
     provider: str = typer.Option(
-        "gemini",
+        "scribe",
         "--provider",
         "-p",
-        help="Transcription provider: 'gemini' or 'scribe'",
+        help="Transcription provider: 'scribe' or 'gemini'",
     ),
     model: str | None = typer.Option(
         None,
