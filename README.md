@@ -2,7 +2,7 @@
 
 A framework for benchmarking Speech-to-Text services with TTFS (Time To Final Segment) latency and Semantic WER (Word Error Rate) accuracy measurement.
 
-> **Note:** Ground truth transcriptions are generated using batch transcription (Gemini Flash or ElevenLabs Scribe v2), not manual human transcription. The reference text may contain inaccuracies that affect WER scores. Results should be interpreted as relative comparisons between services rather than absolute accuracy metrics.
+> **Note:** The results below use ground truth that was human-reviewed after batch transcription. If you reproduce the benchmark yourself, the generated ground truth (via Gemini Flash or ElevenLabs Scribe v2) will not have human review and may contain inaccuracies that affect WER scores. Results should be interpreted as relative comparisons between services rather than absolute accuracy metrics.
 
 ## Results Summary
 
