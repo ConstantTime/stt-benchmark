@@ -45,6 +45,12 @@ class BenchmarkConfig(BaseSettings):
     sarvam_api_key: str = Field(default="", alias="SARVAM_API_KEY")
     soniox_api_key: str = Field(default="", alias="SONIOX_API_KEY")
     speechmatics_api_key: str = Field(default="", alias="SPEECHMATICS_API_KEY")
+    xai_api_key: str = Field(default="", alias="XAI_API_KEY")
+
+    # Anthropic on Vertex (alternative to ANTHROPIC_API_KEY; uses GCP ADC)
+    anthropic_vertex_project_id: str = Field(default="", alias="ANTHROPIC_VERTEX_PROJECT_ID")
+    cloud_ml_region: str = Field(default="us-east5", alias="CLOUD_ML_REGION")
+    wer_judge_model: str = Field(default="", alias="WER_JUDGE_MODEL")
 
     # AWS credentials
     aws_access_key_id: str = Field(default="", alias="AWS_ACCESS_KEY_ID")

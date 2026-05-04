@@ -74,7 +74,8 @@ def calculate_wer(
     And only counts errors that change meaning for an LLM agent.
 
     Requires:
-    - ANTHROPIC_API_KEY set in environment
+    - Anthropic credentials: either ANTHROPIC_VERTEX_PROJECT_ID (uses GCP ADC,
+      run `gcloud auth application-default login` first) or ANTHROPIC_API_KEY.
     - Ground truth generated (stt-benchmark ground-truth)
     """
     console.print("\n[bold blue]STT Benchmark - Calculate Semantic WER[/bold blue]\n")
@@ -82,11 +83,13 @@ def calculate_wer(
     if test:
         console.print("[yellow]Using test database[/yellow]\n")
 
-    # Check for Anthropic API key
     config = get_config()
-    if not config.anthropic_api_key:
-        console.print("[red]ANTHROPIC_API_KEY not set![/red]")
-        console.print("Set ANTHROPIC_API_KEY in your .env file or environment.")
+    if not (config.anthropic_vertex_project_id or config.anthropic_api_key):
+        console.print("[red]No Anthropic credentials found.[/red]")
+        console.print(
+            "Set ANTHROPIC_VERTEX_PROJECT_ID (and run "
+            "`gcloud auth application-default login`) or ANTHROPIC_API_KEY in your .env."
+        )
         raise typer.Exit(1)
 
     # Determine database path

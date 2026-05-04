@@ -361,19 +361,43 @@ class SemanticWEREvaluator:
 
     def __init__(
         self,
-        model: str = "claude-sonnet-4-5-20250929",
+        model: str | None = None,
         db_path: Path | None = None,
         max_concurrency: int = 50,
     ):
         self.config = get_config()
-        self.model = model
         self.db = Database(db_path=db_path)
         self._api_semaphore = asyncio.Semaphore(max_concurrency)
 
-        if not self.config.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY not set in environment")
-
-        self.client = anthropic.AsyncAnthropic(api_key=self.config.anthropic_api_key)
+        # Prefer Vertex when configured (no API key needed; uses GCP ADC).
+        # Fall back to the public Anthropic API when ANTHROPIC_API_KEY is set.
+        if self.config.anthropic_vertex_project_id:
+            self.model = (
+                model
+                or self.config.wer_judge_model
+                or "claude-sonnet-4-5@20250929"
+            )
+            self.client = anthropic.AsyncAnthropicVertex(
+                region=self.config.cloud_ml_region,
+                project_id=self.config.anthropic_vertex_project_id,
+            )
+            logger.info(
+                f"WER judge: Anthropic Vertex (project={self.config.anthropic_vertex_project_id}, "
+                f"region={self.config.cloud_ml_region}, model={self.model})"
+            )
+        elif self.config.anthropic_api_key:
+            self.model = (
+                model
+                or self.config.wer_judge_model
+                or "claude-sonnet-4-5-20250929"
+            )
+            self.client = anthropic.AsyncAnthropic(api_key=self.config.anthropic_api_key)
+            logger.info(f"WER judge: Anthropic API (model={self.model})")
+        else:
+            raise ValueError(
+                "No Anthropic credentials. Set either ANTHROPIC_VERTEX_PROJECT_ID "
+                "(uses GCP Application Default Credentials) or ANTHROPIC_API_KEY."
+            )
 
     async def warm_cache(self) -> None:
         """Send a minimal request to warm the prompt cache.
