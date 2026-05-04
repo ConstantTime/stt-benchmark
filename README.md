@@ -144,9 +144,11 @@ This gives accuracy metrics that reflect real-world impact on downstream LLM app
 
 ## Supported Services
 
-`assemblyai`, `aws`, `azure`, `cartesia`, `deepgram`, `deepgram_flux`, `elevenlabs`, `fal`, `gladia`, `google`, `gradium`, `groq`, `hathora`, `nvidia`, `openai`, `sambanova`, `sarvam`, `soniox`, `speechmatics`, `whisper`
+`assemblyai`, `aws`, `azure`, `cartesia`, `deepgram`, `deepgram_flux`, `elevenlabs`, `fal`, `gladia`, `google`, `gradium`, `groq`, `hathora`, `nvidia`, `openai`, `sambanova`, `sarvam`, `soniox`, `speechmatics`, `whisper`, `xai`
 
 See `env.example` for required API keys.
+
+Use `xai` for the xAI/Grok realtime STT integration. The CLI also accepts `grok` as an alias.
 
 ## CLI Commands
 

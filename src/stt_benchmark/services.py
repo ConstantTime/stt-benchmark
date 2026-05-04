@@ -50,7 +50,7 @@ def _get_env(name: str) -> str:
 
 
 # Type alias for service factory functions
-ServiceFactory = Callable[[], FrameProcessor]
+ServiceFactory = Callable[..., FrameProcessor]
 
 
 @dataclass
@@ -327,6 +327,19 @@ def create_whisper() -> FrameProcessor:
     )
 
 
+def create_xai(aiohttp_session: "aiohttp.ClientSession") -> FrameProcessor:
+    from stt_benchmark.xai_stt import XAIRealtimeSTTService
+
+    return XAIRealtimeSTTService(
+        aiohttp_session=aiohttp_session,
+        api_key=_get_env("XAI_API_KEY"),
+        base_url=os.getenv("XAI_STT_BASE_URL", "wss://api.x.ai/v1/stt"),
+        language=Language.EN,
+        endpointing_ms=int(os.getenv("XAI_ENDPOINTING_MS", "10")),
+        interim_results=True,
+    )
+
+
 # =============================================================================
 # SERVICE REGISTRY
 # =============================================================================
@@ -420,6 +433,15 @@ STT_SERVICES: dict[str, ServiceDefinition] = {
         factory=create_whisper,
         required_env_vars=[],  # Local model, no API key needed
     ),
+    "xai": ServiceDefinition(
+        factory=create_xai,
+        required_env_vars=["XAI_API_KEY"],
+        needs_aiohttp=True,
+    ),
+}
+
+SERVICE_ALIASES = {
+    "grok": "xai",
 }
 
 
@@ -555,9 +577,10 @@ def parse_service_name(name: str) -> "ServiceName":
     from stt_benchmark.models import ServiceName
 
     name_lower = name.strip().lower()
-    if name_lower not in STT_SERVICES:
+    resolved_name = SERVICE_ALIASES.get(name_lower, name_lower)
+    if resolved_name not in STT_SERVICES:
         raise ValueError(f"Unknown service: {name}. Available: {', '.join(STT_SERVICES.keys())}")
-    return ServiceName(name_lower)
+    return ServiceName(resolved_name)
 
 
 def parse_services_arg(services_arg: str) -> list["ServiceName"]:

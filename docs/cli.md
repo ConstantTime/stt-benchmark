@@ -78,8 +78,10 @@ uv run stt-benchmark run [OPTIONS]
 ```
 assemblyai, aws, azure, cartesia, deepgram, elevenlabs, fal,
 gladia, google, gradium, groq, nvidia, openai, sambanova,
-sarvam, soniox, speechmatics, whisper
+sarvam, soniox, speechmatics, whisper, xai
 ```
+
+`grok` is also accepted as an alias for `xai`.
 
 ### Examples
 
