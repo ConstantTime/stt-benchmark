@@ -19,7 +19,7 @@ from stt_benchmark.models import AudioSample, BenchmarkResult, ServiceName
 from stt_benchmark.observers.metrics_collector import MetricsCollectorObserver
 from stt_benchmark.observers.transcription_collector import TranscriptionCollectorObserver
 from stt_benchmark.pipeline.synthetic_transport import SyntheticInputTransport
-from stt_benchmark.services import create_stt_service, get_service_definition
+from stt_benchmark.services import create_stt_service, get_service_definition, parse_language
 
 
 class BenchmarkRunner:
@@ -152,8 +152,13 @@ class BenchmarkRunner:
         Returns:
             BenchmarkResult with TTFB and transcription.
         """
-        # Create STT service using its factory
-        stt_service = create_stt_service(service_name, aiohttp_session=aiohttp_session)
+        # Create STT service using its factory; dispatch the audio in the
+        # sample's language for services that support per-call language.
+        stt_service = create_stt_service(
+            service_name,
+            aiohttp_session=aiohttp_session,
+            language=parse_language(sample.language),
+        )
 
         # Create transport with audio
         # Pass transcription_received event so transport sends silence

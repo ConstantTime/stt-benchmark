@@ -69,6 +69,61 @@ class ServiceDefinition:
     # context and pass it as the first argument to the factory.
     needs_aiohttp: bool = False
 
+    # Whether this factory accepts a `language: Language` keyword argument
+    # for per-sample language dispatch. Factories that hardcode a language
+    # leave this False; the runner won't pass `language=` to them.
+    accepts_language: bool = False
+
+
+# ISO 639 / BCP-47 → pipecat Language enum.
+# Covers the 6 target languages plus English. Unknown codes fall back to EN.
+_LANGUAGE_MAP: dict[str, Language] = {
+    # 2-letter (ISO 639-1)
+    "en": Language.EN,
+    "no": Language.NB,  # FLEURS uses "no" for Norwegian
+    "nb": Language.NB,
+    "da": Language.DA,
+    "de": Language.DE,
+    "fr": Language.FR,
+    "it": Language.IT,
+    "es": Language.ES,
+    # 3-letter (ISO 639-2/3) — what smart-turn-data uses
+    "eng": Language.EN,
+    "nor": Language.NB,
+    "nob": Language.NB,
+    "dan": Language.DA,
+    "deu": Language.DE,
+    "ger": Language.DE,
+    "fra": Language.FR,
+    "fre": Language.FR,
+    "ita": Language.IT,
+    "spa": Language.ES,
+    # BCP-47 (FLEURS subset codes)
+    "nb_no": Language.NB_NO,
+    "da_dk": Language.DA_DK,
+    "de_de": Language.DE_DE,
+    "fr_fr": Language.FR_FR,
+    "it_it": Language.IT_IT,
+    "es_es": Language.ES_ES,
+    "es_419": Language.ES_419,
+    "en_us": Language.EN_US,
+}
+
+
+def parse_language(code: str | None) -> Language:
+    """Map a language code string to a pipecat Language enum.
+
+    Accepts hyphens or underscores; case-insensitive. Falls back to the
+    head before the separator (e.g. "nb_no" -> "nb"). Defaults to EN.
+    """
+    if not code:
+        return Language.EN
+    norm = code.lower().replace("-", "_")
+    if norm in _LANGUAGE_MAP:
+        return _LANGUAGE_MAP[norm]
+    head = norm.split("_", 1)[0]
+    return _LANGUAGE_MAP.get(head, Language.EN)
+
 
 # =============================================================================
 # SERVICE FACTORY FUNCTIONS
@@ -135,19 +190,21 @@ def create_deepgram() -> FrameProcessor:
     )
 
 
-def create_elevenlabs() -> FrameProcessor:
+def create_elevenlabs(language: Language = Language.EN) -> FrameProcessor:
     from pipecat.services.elevenlabs.stt import ElevenLabsRealtimeSTTService
 
     return ElevenLabsRealtimeSTTService(
         api_key=_get_env("ELEVENLABS_API_KEY"),
         model="scribe_v2_realtime",
         params=ElevenLabsRealtimeSTTService.InputParams(
-            language=Language.EN,
+            language=language,
         ),
     )
 
 
-def create_elevenlabs_http(aiohttp_session: "aiohttp.ClientSession") -> FrameProcessor:
+def create_elevenlabs_http(
+    aiohttp_session: "aiohttp.ClientSession", language: Language = Language.EN
+) -> FrameProcessor:
     from pipecat.services.elevenlabs.stt import ElevenLabsSTTService
 
     return ElevenLabsSTTService(
@@ -155,7 +212,7 @@ def create_elevenlabs_http(aiohttp_session: "aiohttp.ClientSession") -> FramePro
         api_key=_get_env("ELEVENLABS_API_KEY"),
         model="scribe_v2",
         params=ElevenLabsSTTService.InputParams(
-            language=Language.EN,
+            language=language,
         ),
     )
 
@@ -305,14 +362,14 @@ def create_soniox() -> FrameProcessor:
     )
 
 
-def create_speechmatics() -> FrameProcessor:
+def create_speechmatics(language: Language = Language.EN) -> FrameProcessor:
     from pipecat.services.speechmatics.stt import SpeechmaticsSTTService, TurnDetectionMode
 
     return SpeechmaticsSTTService(
         api_key=_get_env("SPEECHMATICS_API_KEY"),
         base_url=os.getenv("SPEECHMATICS_RT_URL", "wss://us.rt.speechmatics.com/v2"),
         params=SpeechmaticsSTTService.InputParams(
-            language=Language.EN,
+            language=language,
             turn_detection_mode=TurnDetectionMode.EXTERNAL,
         ),
     )
@@ -327,14 +384,16 @@ def create_whisper() -> FrameProcessor:
     )
 
 
-def create_xai(aiohttp_session: "aiohttp.ClientSession") -> FrameProcessor:
+def create_xai(
+    aiohttp_session: "aiohttp.ClientSession", language: Language = Language.EN
+) -> FrameProcessor:
     from stt_benchmark.xai_stt import XAIRealtimeSTTService
 
     return XAIRealtimeSTTService(
         aiohttp_session=aiohttp_session,
         api_key=_get_env("XAI_API_KEY"),
         base_url=os.getenv("XAI_STT_BASE_URL", "wss://api.x.ai/v1/stt"),
-        language=Language.EN,
+        language=language,
         endpointing_ms=int(os.getenv("XAI_ENDPOINTING_MS", "10")),
         interim_results=True,
     )
@@ -371,11 +430,13 @@ STT_SERVICES: dict[str, ServiceDefinition] = {
     "elevenlabs": ServiceDefinition(
         factory=create_elevenlabs,
         required_env_vars=["ELEVENLABS_API_KEY"],
+        accepts_language=True,
     ),
     "elevenlabs_http": ServiceDefinition(
         factory=create_elevenlabs_http,
         required_env_vars=["ELEVENLABS_API_KEY"],
         needs_aiohttp=True,
+        accepts_language=True,
     ),
     "fal": ServiceDefinition(
         factory=create_fal,
@@ -428,6 +489,7 @@ STT_SERVICES: dict[str, ServiceDefinition] = {
     "speechmatics": ServiceDefinition(
         factory=create_speechmatics,
         required_env_vars=["SPEECHMATICS_API_KEY"],
+        accepts_language=True,
     ),
     "whisper": ServiceDefinition(
         factory=create_whisper,
@@ -437,6 +499,7 @@ STT_SERVICES: dict[str, ServiceDefinition] = {
         factory=create_xai,
         required_env_vars=["XAI_API_KEY"],
         needs_aiohttp=True,
+        accepts_language=True,
     ),
 }
 
@@ -491,6 +554,7 @@ def is_service_available(name: str) -> bool:
 def create_stt_service(
     service_name: "ServiceName",
     aiohttp_session: "aiohttp.ClientSession | None" = None,
+    language: Language | None = None,
 ) -> FrameProcessor:
     """Create an STT service instance using its factory function.
 
@@ -498,6 +562,9 @@ def create_stt_service(
         service_name: The STT service to create.
         aiohttp_session: Optional aiohttp session for services that require one
             (i.e. services with needs_aiohttp=True in their ServiceDefinition).
+        language: Optional pipecat Language to dispatch this transcription in.
+            Only passed to factories with `accepts_language=True`; others
+            fall back to whatever language they hardcode.
 
     Returns:
         Configured STT service instance.
@@ -508,7 +575,14 @@ def create_stt_service(
     from loguru import logger
 
     definition = get_service_definition(service_name.value)
-    logger.debug(f"Creating {service_name.value} STT service")
+    logger.debug(
+        f"Creating {service_name.value} STT service"
+        + (f" (language={language})" if language and definition.accepts_language else "")
+    )
+
+    kwargs = {}
+    if definition.accepts_language and language is not None:
+        kwargs["language"] = language
 
     if definition.needs_aiohttp:
         if aiohttp_session is None:
@@ -516,9 +590,9 @@ def create_stt_service(
                 f"Service {service_name.value} requires an aiohttp session "
                 f"but none was provided. The pipeline runner should create one."
             )
-        return definition.factory(aiohttp_session)
+        return definition.factory(aiohttp_session, **kwargs)
 
-    return definition.factory()
+    return definition.factory(**kwargs)
 
 
 def get_available_services() -> list["ServiceName"]:
@@ -565,6 +639,11 @@ def get_all_services() -> list["ServiceName"]:
 def parse_service_name(name: str) -> "ServiceName":
     """Parse a service name string to ServiceName enum.
 
+    Accepts any name in STT_SERVICES (Pipecat-pipeline services) as well as
+    any value in the ServiceName enum (e.g. batch-REST services like
+    `speechmatics_batch` that don't have a Pipecat factory but do produce
+    rows in the `results` table for `wer` and `report` to consume).
+
     Args:
         name: Service name (case-insensitive)
 
@@ -572,15 +651,22 @@ def parse_service_name(name: str) -> "ServiceName":
         ServiceName enum value
 
     Raises:
-        ValueError: If service name is unknown
+        ValueError: If the name is not a recognized service.
     """
     from stt_benchmark.models import ServiceName
 
     name_lower = name.strip().lower()
     resolved_name = SERVICE_ALIASES.get(name_lower, name_lower)
-    if resolved_name not in STT_SERVICES:
-        raise ValueError(f"Unknown service: {name}. Available: {', '.join(STT_SERVICES.keys())}")
-    return ServiceName(resolved_name)
+    if resolved_name in STT_SERVICES:
+        return ServiceName(resolved_name)
+    # Allow ServiceName members that aren't in STT_SERVICES (batch services).
+    try:
+        return ServiceName(resolved_name)
+    except ValueError:
+        valid = sorted(set(STT_SERVICES.keys()) | {s.value for s in ServiceName})
+        raise ValueError(
+            f"Unknown service: {name}. Available: {', '.join(valid)}"
+        ) from None
 
 
 def parse_services_arg(services_arg: str) -> list["ServiceName"]:
