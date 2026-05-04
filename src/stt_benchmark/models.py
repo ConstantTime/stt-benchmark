@@ -39,6 +39,7 @@ class ServiceName(str, Enum):
     SONIOX = "soniox"
     WHISPER = "whisper"
     XAI = "xai"
+    XAI_BATCH = "xai_batch"
 
 
 class AudioSample(BaseModel):

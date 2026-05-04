@@ -22,8 +22,9 @@ from stt_benchmark.models import ServiceName
 from stt_benchmark.scribe_batch import run_and_persist as scribe_run_and_persist
 from stt_benchmark.speechmatics_batch import run_and_persist as speechmatics_run_and_persist
 from stt_benchmark.storage.database import Database
+from stt_benchmark.xai_batch import run_and_persist as xai_run_and_persist
 
-_BATCH_SERVICES = {"speechmatics_batch", "elevenlabs_batch"}
+_BATCH_SERVICES = {"speechmatics_batch", "elevenlabs_batch", "xai_batch"}
 
 app = typer.Typer()
 console = Console()
@@ -75,6 +76,9 @@ def run_batch(
     if "elevenlabs_batch" in requested and not config.elevenlabs_api_key:
         console.print("[red]ELEVENLABS_API_KEY not set in environment[/red]")
         raise typer.Exit(1)
+    if "xai_batch" in requested and not config.xai_api_key:
+        console.print("[red]XAI_API_KEY not set in environment[/red]")
+        raise typer.Exit(1)
 
     async def _run_one(
         db: Database,
@@ -93,6 +97,14 @@ def run_batch(
             kwargs = dict(max_concurrency=concurrency)
             label = "ElevenLabs Scribe v2 batch"
             persist_model = "scribe_v2"
+        elif svc_name == "xai_batch":
+            svc_enum = ServiceName.XAI_BATCH
+            run_and_persist = xai_run_and_persist
+            # xAI is a per-sample WebSocket; cap parallelism to avoid trips on
+            # rate limits / connection ceilings.
+            kwargs = dict(max_concurrency=min(concurrency, 4))
+            label = "xAI realtime STT (used as batch)"
+            persist_model = "grok-stt"
         else:
             raise RuntimeError(f"unreachable: {svc_name}")
 
