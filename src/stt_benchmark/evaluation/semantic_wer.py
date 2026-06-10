@@ -63,9 +63,17 @@ We do NOT count as errors:
 
 **1.4 Numbers**: Normalize digits ↔ words (treat as equivalent)
    "3" = "three", "$5" = "five dollars", "1st" = "first"
+   Digit SEQUENCES read aloud equal their grouped/formatted form — phone numbers,
+   confirmation codes, account numbers, etc. Grouping, spacing and separators
+   (dashes/dots/parens) never matter:
+   "seven one four five five five six seven eight nine" = "7 1 4 5 5 5 6 7 8 9"
+   = "714-555-6789" = "714 555 6789" = "(714) 555-6789". All identical.
 
-**1.5 Filler Words**: Remove if present in only one version
-   um, uh, like, you know, well (at start), so (at start), actually, basically
+**1.5 Filler Words & Backchannels**: Remove if present in only one version
+   Fillers: um, uh, like, you know, well (at start), so (at start), actually, basically
+   Backchannels/acknowledgements are all equivalent to each other AND ignorable —
+   their presence or absence is never an error:
+   "mhm" = "mm-hmm" = "mmhm" = "uh-huh" = "uh huh" = "hmm" = "mm" = "huh"
 
 **1.6 Abbreviations**: Expand common forms
    "Dr." = "doctor", "Mr." = "mister", "St." = "saint/street"
@@ -79,8 +87,11 @@ We do NOT count as errors:
 **1.9 Spoken Variations**: Normalize informal speech
    "gonna" = "going to", "yeah" = "yes", "ok" = "okay"
 
-**1.10 Symbols**: Convert to words
-   "&" = "and", "@" = "at"
+**1.10 Symbols & Spoken Punctuation**: Convert to words / treat the spoken name as the symbol
+   "&" = "and", "@" = "at", "%" = "percent", "+" = "plus", "=" = "equals"
+   Spoken punctuation equals the written symbol it names:
+   "dash"/"hyphen" = "-", "dot" = ".", "slash" = "/"
+   So "R dash seven eight nine" = "R-789", and "twenty percent" = "20%".
 
 **1.11 Possessives**: Treat as equivalent (LLM understands both)
    "driver's" = "drivers" = "driver" (when referring to same thing)
@@ -116,6 +127,9 @@ COUNT AS ERROR: [YES/NO]
 - Possessives: "driver's"→"drivers"→"driver" = NO
 - Missing articles: "the X"→"X" = NO
 - Hyphenation: "Wi-Fi"→"wi fi" = NO
+- Digit grouping: "7 1 4 5 5 5"→"714-555", "seven one four"→"714" = NO
+- Backchannels: "mhm"→"mm-hmm", "uh-huh"→(absent) = NO
+- Spoken symbols: "twenty percent"→"20%", "R dash 789"→"R-789" = NO
 
 **Patterns that ARE errors (answer YES):**
 - Different words: "card"→"car", "trace"→"trade", "hours"→"was" = YES
@@ -278,6 +292,41 @@ Semantic check:
 - **YES, ERROR** - agent might try to interpret repeated phrase
 
 **Result: S=0, D=0, I=2, N=7 → WER = 2/7 = 28.6%**
+
+---
+
+### Example 9: Phone Number — Spoken Digits vs Grouped (WER = 0%)
+**Reference:** "My office number is 7 1 4 5 5 5 6 7 8 9"
+**Hypothesis:** "My office number is 714-555-6789"
+
+Semantic check:
+- "7 1 4 5 5 5 6 7 8 9" → "714-555-6789" = same phone number, only the grouping/separators differ → NOT an error
+
+Both normalize to "my office number is 714 555 6789".
+
+**Result: S=0, D=0, I=0, N=7 → WER = 0%**
+
+---
+
+### Example 10: Backchannel (WER = 0%)
+**Reference:** "Okay mm-hmm so I was wondering if I could schedule a repair"
+**Hypothesis:** "Okay so I was wondering if I could schedule a repair"
+
+Semantic check:
+- "mm-hmm" present only in reference = backchannel/acknowledgement → NOT an error
+
+**Result: S=0, D=0, I=0, N=11 → WER = 0%**
+
+---
+
+### Example 11: Percent / Spoken Symbol (WER = 0%)
+**Reference:** "I found a coupon for twenty percent off my order"
+**Hypothesis:** "I found a coupon for 20% off my order"
+
+Semantic check:
+- "twenty percent" → "20%" = identical quantity, digits + symbol vs words → NOT an error
+
+**Result: S=0, D=0, I=0, N=10 → WER = 0%**
 
 ---
 
