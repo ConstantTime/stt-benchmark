@@ -411,9 +411,19 @@ class SemanticWEREvaluator:
         on rate-limit (429) and server (5xx) errors with exponential
         backoff.
         """
+        # Newer judge models (e.g. opus-4.x) reject `temperature`; once we learn that,
+        # stop sending it so the harness isn't pinned to models that still accept it.
+        if getattr(self, "_temperature_unsupported", False):
+            request_payload.pop("temperature", None)
         for attempt in range(1, max_retries + 1):
             try:
                 return await self.client.messages.create(**request_payload)
+            except anthropic.BadRequestError as e:
+                if "temperature" in str(e) and request_payload.pop("temperature", None) is not None:
+                    self._temperature_unsupported = True
+                    logger.warning(f"{filename}: model rejects temperature param; retrying without it")
+                    continue
+                raise
             except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError) as e:
                 label = "rate limited" if isinstance(e, anthropic.RateLimitError) else "server error"
                 if attempt == max_retries:
